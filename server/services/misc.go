@@ -33,10 +33,10 @@ func GenerateAddress(network *types.NetworkIdentifier, script *typesCKB.Script) 
 		mode = address.Testnet
 	}
 
-	address, err := address.Generate(mode, script)
+	addr, err := address.Generate(mode, script)
 	if err != nil {
 		log.Fatalf("generate address error: %v", err)
 	}
 
-	return address
+	return addr
 }
