@@ -103,6 +103,7 @@ func (s *NetworkAPIService) NetworkOptions(
 			Errors: []*types.Error{
 				NoImplementError,
 				RpcError,
+				AddressError,
 			},
 		},
 	}, nil

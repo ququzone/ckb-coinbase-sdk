@@ -176,4 +176,25 @@ func main() {
 	for _, txn := range block.OtherTransactions {
 		log.Printf("Other Transaction: %+v\n", txn)
 	}
+
+	// Step 15: GetAccount
+	account, rosettaErr, err := client.AccountAPI.AccountBalance(ctx, &types.AccountBalanceRequest{
+		NetworkIdentifier: primaryNetwork,
+		AccountIdentifier: &types.AccountIdentifier{
+			Address: "ckb1qyqxsztqvpfdyu00kt99hxgxcwr2l4z67ars5nv5pp",
+		},
+	})
+	if rosettaErr != nil {
+		log.Printf("Rosetta Error: %+v\n", rosettaErr)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Step 16: Print the account
+	prettyAccount, err := json.MarshalIndent(account, "", " ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Account: %s\n", string(prettyAccount))
 }

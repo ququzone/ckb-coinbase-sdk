@@ -21,6 +21,12 @@ var (
 		Retriable: true,
 	}
 
+	AddressError = &types.Error{
+		Code:      3,
+		Message:   "address error",
+		Retriable: false,
+	}
+
 	CkbCurrency = &types.Currency{
 		Symbol:   "CKB",
 		Decimals: 8,
