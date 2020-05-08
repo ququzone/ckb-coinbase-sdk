@@ -21,7 +21,7 @@ type AccountAPIService struct {
 	client  rpc.Client
 }
 
-// NewAccountAPIService creates a new instance of a BlockAPIService.
+// NewAccountAPIService creates a new instance of a AccountAPIService.
 func NewAccountAPIService(network *types.NetworkIdentifier, client rpc.Client) server.AccountAPIServicer {
 	return &AccountAPIService{
 		network: network,
