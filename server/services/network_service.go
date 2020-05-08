@@ -104,6 +104,7 @@ func (s *NetworkAPIService) NetworkOptions(
 				NoImplementError,
 				RpcError,
 				AddressError,
+				SubmitError,
 			},
 		},
 	}, nil

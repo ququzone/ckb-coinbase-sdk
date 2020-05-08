@@ -27,6 +27,12 @@ var (
 		Retriable: false,
 	}
 
+	SubmitError = &types.Error{
+		Code:      4,
+		Message:   "submit transaction error",
+		Retriable: true,
+	}
+
 	CkbCurrency = &types.Currency{
 		Symbol:   "CKB",
 		Decimals: 8,

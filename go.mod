@@ -8,7 +8,7 @@ require (
 	github.com/coinbase/rosetta-sdk-go v0.1.6
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/elastic/gosigar v0.10.5 // indirect
-	github.com/ethereum/go-ethereum v1.9.13 // indirect
+	github.com/ethereum/go-ethereum v1.9.13
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/ququzone/ckb-rich-sdk-go v0.1.0
