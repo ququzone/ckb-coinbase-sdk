@@ -31,7 +31,7 @@ func (s *BlockAPIService) Block(
 ) (*types.BlockResponse, *types.Error) {
 	var block *typesCKB.Block
 	var err error
-	if *request.BlockIdentifier.Hash == "" {
+	if request.BlockIdentifier.Hash == nil || *request.BlockIdentifier.Hash == "" {
 		if *request.BlockIdentifier.Index < 0 {
 			*request.BlockIdentifier.Index = 0
 		}
