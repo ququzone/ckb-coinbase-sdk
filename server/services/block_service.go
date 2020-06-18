@@ -49,6 +49,10 @@ func (s *BlockAPIService) Block(
 				Index: int64(block.Header.Number),
 				Hash:  block.Header.Hash.String(),
 			},
+			ParentBlockIdentifier: &types.BlockIdentifier{
+				Index: int64(block.Header.Number),
+				Hash:  block.Header.Hash.String(),
+			},
 			Timestamp:    int64(block.Header.Timestamp),
 			Transactions: []*types.Transaction{},
 		},
@@ -64,7 +68,7 @@ func (s *BlockAPIService) Block(
 	for i, tx := range block.Transactions {
 		var transaction *types.Transaction
 		optIndex := int64(0)
-		if i == 0 {
+		if i == 0 && len(tx.Outputs) > 0 {
 			transaction = &types.Transaction{
 				TransactionIdentifier: &types.TransactionIdentifier{
 					Hash: tx.Hash.String(),
@@ -95,24 +99,26 @@ func (s *BlockAPIService) Block(
 				Operations: []*types.Operation{},
 			}
 			for _, input := range tx.Inputs {
-				previousTx, err := s.client.GetTransaction(context.Background(), input.PreviousOutput.TxHash)
-				if err != nil {
-					return nil, RpcError
+				if input.PreviousOutput.TxHash.String() != "0x0000000000000000000000000000000000000000000000000000000000000000" {
+					previousTx, err := s.client.GetTransaction(context.Background(), input.PreviousOutput.TxHash)
+					if err != nil {
+						return nil, RpcError
+					}
+					transaction.Operations = append(transaction.Operations, &types.Operation{
+						OperationIdentifier: &types.OperationIdentifier{
+							Index: optIndex,
+						},
+						Type:   "Transfer",
+						Status: "Success",
+						Account: &types.AccountIdentifier{
+							Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
+						},
+						Amount: &types.Amount{
+							Value:    fmt.Sprintf("%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
+							Currency: CkbCurrency,
+						},
+					})
 				}
-				transaction.Operations = append(transaction.Operations, &types.Operation{
-					OperationIdentifier: &types.OperationIdentifier{
-						Index: optIndex,
-					},
-					Type:   "Transfer",
-					Status: "Success",
-					Account: &types.AccountIdentifier{
-						Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
-					},
-					Amount: &types.Amount{
-						Value:    fmt.Sprintf("-%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
-						Currency: CkbCurrency,
-					},
-				})
 				optIndex++
 			}
 			for _, output := range tx.Outputs {
@@ -120,7 +126,7 @@ func (s *BlockAPIService) Block(
 					OperationIdentifier: &types.OperationIdentifier{
 						Index: optIndex,
 					},
-					Type:   "Transfer",
+					Type:   "Receive",
 					Status: "Success",
 					Account: &types.AccountIdentifier{
 						Address: GenerateAddress(s.network, output.Lock),
@@ -150,7 +156,7 @@ func (s *BlockAPIService) BlockTransaction(
 	}
 	var transaction *types.Transaction
 	optIndex := int64(0)
-	if tx.Transaction.Inputs[0].PreviousOutput.TxHash.String() == "0x0000000000000000000000000000000000000000000000000000000000000000" {
+	if tx.Transaction.Inputs[0].PreviousOutput.TxHash.String() == "0x0000000000000000000000000000000000000000000000000000000000000000" && len(tx.Transaction.Outputs) > 0 {
 		transaction = &types.Transaction{
 			TransactionIdentifier: &types.TransactionIdentifier{
 				Hash: tx.Transaction.Hash.String(),
@@ -195,7 +201,7 @@ func (s *BlockAPIService) BlockTransaction(
 					Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
 				},
 				Amount: &types.Amount{
-					Value:    fmt.Sprintf("-%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
+					Value:    fmt.Sprintf("%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
 					Currency: CkbCurrency,
 				},
 			})
@@ -206,7 +212,7 @@ func (s *BlockAPIService) BlockTransaction(
 				OperationIdentifier: &types.OperationIdentifier{
 					Index: optIndex,
 				},
-				Type:   "Transfer",
+				Type:   "Receive",
 				Status: "Success",
 				Account: &types.AccountIdentifier{
 					Address: GenerateAddress(s.network, output.Lock),
