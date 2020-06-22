@@ -68,29 +68,32 @@ func (s *BlockAPIService) Block(
 	for i, tx := range block.Transactions {
 		var transaction *types.Transaction
 		optIndex := int64(0)
-		if i == 0 && len(tx.Outputs) > 0 {
-			transaction = &types.Transaction{
-				TransactionIdentifier: &types.TransactionIdentifier{
-					Hash: tx.Hash.String(),
-				},
-				Operations: []*types.Operation{
-					{
+		if i == 0 {
+			if len(tx.Outputs) > 0 {
+				transaction = &types.Transaction{
+					TransactionIdentifier: &types.TransactionIdentifier{
+						Hash: tx.Hash.String(),
+					},
+					Operations: []*types.Operation{},
+				}
+				for _, output := range tx.Outputs {
+					transaction.Operations = append(transaction.Operations, &types.Operation{
 						OperationIdentifier: &types.OperationIdentifier{
 							Index: optIndex,
 						},
 						Type:   "Reward",
 						Status: "Success",
 						Account: &types.AccountIdentifier{
-							Address: GenerateAddress(s.network, tx.Outputs[0].Lock),
+							Address: GenerateAddress(s.network, output.Lock),
 						},
 						Amount: &types.Amount{
-							Value:    fmt.Sprintf("%d", tx.Outputs[0].Capacity),
+							Value:    fmt.Sprintf("%d", output.Capacity),
 							Currency: CkbCurrency,
 						},
-					},
-				},
+					})
+					optIndex++
+				}
 			}
-			optIndex++
 		} else {
 			transaction = &types.Transaction{
 				TransactionIdentifier: &types.TransactionIdentifier{
@@ -99,26 +102,24 @@ func (s *BlockAPIService) Block(
 				Operations: []*types.Operation{},
 			}
 			for _, input := range tx.Inputs {
-				if input.PreviousOutput.TxHash.String() != "0x0000000000000000000000000000000000000000000000000000000000000000" {
-					previousTx, err := s.client.GetTransaction(context.Background(), input.PreviousOutput.TxHash)
-					if err != nil {
-						return nil, RpcError
-					}
-					transaction.Operations = append(transaction.Operations, &types.Operation{
-						OperationIdentifier: &types.OperationIdentifier{
-							Index: optIndex,
-						},
-						Type:   "Transfer",
-						Status: "Success",
-						Account: &types.AccountIdentifier{
-							Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
-						},
-						Amount: &types.Amount{
-							Value:    fmt.Sprintf("%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
-							Currency: CkbCurrency,
-						},
-					})
+				previousTx, err := s.client.GetTransaction(context.Background(), input.PreviousOutput.TxHash)
+				if err != nil {
+					return nil, RpcError
 				}
+				transaction.Operations = append(transaction.Operations, &types.Operation{
+					OperationIdentifier: &types.OperationIdentifier{
+						Index: optIndex,
+					},
+					Type:   "Transfer",
+					Status: "Success",
+					Account: &types.AccountIdentifier{
+						Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
+					},
+					Amount: &types.Amount{
+						Value:    fmt.Sprintf("-%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
+						Currency: CkbCurrency,
+					},
+				})
 				optIndex++
 			}
 			for _, output := range tx.Outputs {
@@ -126,7 +127,7 @@ func (s *BlockAPIService) Block(
 					OperationIdentifier: &types.OperationIdentifier{
 						Index: optIndex,
 					},
-					Type:   "Receive",
+					Type:   "Transfer",
 					Status: "Success",
 					Account: &types.AccountIdentifier{
 						Address: GenerateAddress(s.network, output.Lock),
@@ -139,7 +140,9 @@ func (s *BlockAPIService) Block(
 				optIndex++
 			}
 		}
-		result.Block.Transactions = append(result.Block.Transactions, transaction)
+		if transaction != nil {
+			result.Block.Transactions = append(result.Block.Transactions, transaction)
+		}
 	}
 
 	return result, nil
@@ -156,29 +159,32 @@ func (s *BlockAPIService) BlockTransaction(
 	}
 	var transaction *types.Transaction
 	optIndex := int64(0)
-	if tx.Transaction.Inputs[0].PreviousOutput.TxHash.String() == "0x0000000000000000000000000000000000000000000000000000000000000000" && len(tx.Transaction.Outputs) > 0 {
-		transaction = &types.Transaction{
-			TransactionIdentifier: &types.TransactionIdentifier{
-				Hash: tx.Transaction.Hash.String(),
-			},
-			Operations: []*types.Operation{
-				{
+	if tx.Transaction.Inputs[0].PreviousOutput.TxHash.String() == "0x0000000000000000000000000000000000000000000000000000000000000000" {
+		if len(tx.Transaction.Outputs) > 0 {
+			transaction = &types.Transaction{
+				TransactionIdentifier: &types.TransactionIdentifier{
+					Hash: tx.Transaction.Hash.String(),
+				},
+				Operations: []*types.Operation{},
+			}
+			for _, output := range tx.Transaction.Outputs {
+				transaction.Operations = append(transaction.Operations, &types.Operation{
 					OperationIdentifier: &types.OperationIdentifier{
 						Index: optIndex,
 					},
 					Type:   "Reward",
 					Status: "Success",
 					Account: &types.AccountIdentifier{
-						Address: GenerateAddress(s.network, tx.Transaction.Outputs[0].Lock),
+						Address: GenerateAddress(s.network, output.Lock),
 					},
 					Amount: &types.Amount{
-						Value:    fmt.Sprintf("%d", tx.Transaction.Outputs[0].Capacity),
+						Value:    fmt.Sprintf("%d", output.Capacity),
 						Currency: CkbCurrency,
 					},
-				},
-			},
+				})
+				optIndex++
+			}
 		}
-		optIndex++
 	} else {
 		transaction = &types.Transaction{
 			TransactionIdentifier: &types.TransactionIdentifier{
@@ -201,7 +207,7 @@ func (s *BlockAPIService) BlockTransaction(
 					Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
 				},
 				Amount: &types.Amount{
-					Value:    fmt.Sprintf("%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
+					Value:    fmt.Sprintf("-%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
 					Currency: CkbCurrency,
 				},
 			})
@@ -212,7 +218,7 @@ func (s *BlockAPIService) BlockTransaction(
 				OperationIdentifier: &types.OperationIdentifier{
 					Index: optIndex,
 				},
-				Type:   "Receive",
+				Type:   "Transfer",
 				Status: "Success",
 				Account: &types.AccountIdentifier{
 					Address: GenerateAddress(s.network, output.Lock),
@@ -223,6 +229,15 @@ func (s *BlockAPIService) BlockTransaction(
 				},
 			})
 			optIndex++
+		}
+	}
+
+	if transaction == nil {
+		transaction = &types.Transaction{
+			TransactionIdentifier: &types.TransactionIdentifier{
+				Hash: tx.Transaction.Hash.String(),
+			},
+			Operations: []*types.Operation{},
 		}
 	}
 

@@ -98,7 +98,6 @@ func (s *NetworkAPIService) NetworkOptions(
 			},
 			OperationTypes: []string{
 				"Transfer",
-				"Receive",
 				"Reward",
 			},
 			Errors: []*types.Error{
