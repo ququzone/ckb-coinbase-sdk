@@ -101,27 +101,11 @@ func (s *BlockAPIService) Block(
 				},
 				Operations: []*types.Operation{},
 			}
-			for _, input := range tx.Inputs {
-				previousTx, err := s.client.GetTransaction(context.Background(), input.PreviousOutput.TxHash)
-				if err != nil {
-					return nil, RpcError
-				}
-				transaction.Operations = append(transaction.Operations, &types.Operation{
-					OperationIdentifier: &types.OperationIdentifier{
-						Index: optIndex,
-					},
-					Type:   "Transfer",
-					Status: "Success",
-					Account: &types.AccountIdentifier{
-						Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
-					},
-					Amount: &types.Amount{
-						Value:    fmt.Sprintf("-%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
-						Currency: CkbCurrency,
-					},
-				})
-				optIndex++
+			index, err := s.processTxInputs(tx.Inputs, optIndex, transaction)
+			if err != nil {
+				return nil, RpcError
 			}
+			optIndex = index
 			for _, output := range tx.Outputs {
 				transaction.Operations = append(transaction.Operations, &types.Operation{
 					OperationIdentifier: &types.OperationIdentifier{
@@ -192,27 +176,12 @@ func (s *BlockAPIService) BlockTransaction(
 			},
 			Operations: []*types.Operation{},
 		}
-		for _, input := range tx.Transaction.Inputs {
-			previousTx, err := s.client.GetTransaction(context.Background(), input.PreviousOutput.TxHash)
-			if err != nil {
-				return nil, RpcError
-			}
-			transaction.Operations = append(transaction.Operations, &types.Operation{
-				OperationIdentifier: &types.OperationIdentifier{
-					Index: optIndex,
-				},
-				Type:   "Transfer",
-				Status: "Success",
-				Account: &types.AccountIdentifier{
-					Address: GenerateAddress(s.network, previousTx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
-				},
-				Amount: &types.Amount{
-					Value:    fmt.Sprintf("-%d", previousTx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
-					Currency: CkbCurrency,
-				},
-			})
-			optIndex++
+		index, err := s.processTxInputs(tx.Transaction.Inputs, optIndex, transaction)
+		if err != nil {
+			return nil, RpcError
 		}
+		optIndex = index
+
 		for _, output := range tx.Transaction.Outputs {
 			transaction.Operations = append(transaction.Operations, &types.Operation{
 				OperationIdentifier: &types.OperationIdentifier{
@@ -244,4 +213,43 @@ func (s *BlockAPIService) BlockTransaction(
 	return &types.BlockTransactionResponse{
 		Transaction: transaction,
 	}, nil
+}
+
+func (s *BlockAPIService) processTxInputs(inputs []*typesCKB.CellInput, optIndex int64, transaction *types.Transaction) (int64, error) {
+	batchReq := make([]typesCKB.BatchTransactionItem, len(inputs))
+	for i, input := range inputs {
+		batchReq[i] = typesCKB.BatchTransactionItem{
+			Hash:   input.PreviousOutput.TxHash,
+			Result: &typesCKB.TransactionWithStatus{},
+		}
+	}
+
+	err := s.client.BatchTransactions(context.Background(), batchReq)
+	if err != nil {
+		return 0, err
+	}
+
+	for i, input := range inputs {
+		req := batchReq[i]
+		if req.Error != nil {
+			return 0, req.Error
+		}
+		transaction.Operations = append(transaction.Operations, &types.Operation{
+			OperationIdentifier: &types.OperationIdentifier{
+				Index: optIndex,
+			},
+			Type:   "Transfer",
+			Status: "Success",
+			Account: &types.AccountIdentifier{
+				Address: GenerateAddress(s.network, req.Result.Transaction.Outputs[input.PreviousOutput.Index].Lock),
+			},
+			Amount: &types.Amount{
+				Value:    fmt.Sprintf("-%d", req.Result.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
+				Currency: CkbCurrency,
+			},
+		})
+		optIndex++
+	}
+
+	return optIndex, nil
 }
