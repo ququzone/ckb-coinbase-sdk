@@ -25,7 +25,7 @@ func main() {
 
 	client := client.NewAPIClient(clientCfg)
 
-	var index int64 = 0
+	var index int64 = 1381633
 
 	// Step 11: Fetch the current block
 	block, rosettaErr, err := client.BlockAPI.Block(

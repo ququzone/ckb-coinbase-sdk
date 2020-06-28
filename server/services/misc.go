@@ -35,7 +35,7 @@ var (
 
 	ServerError = &types.Error{
 		Code:      5,
-		Message:   "rpc error",
+		Message:   "server error",
 		Retriable: true,
 	}
 

@@ -82,13 +82,27 @@ func (s *BlockAPIService) Block(
 	}
 	inputTxCache := make(map[string]*typesCKB.TransactionWithStatus)
 	if len(batchReq) > 0 {
-		err = s.client.BatchTransactions(context.Background(), batchReq)
-		if err != nil {
-			return nil, RpcError
+		count := len(batchReq) / 2000
+		if len(batchReq)%2000 != 0 {
+			count++
+		}
+
+		for i := 0; i < count; i++ {
+			start := i * 2000
+			end := start + 2000
+			if i == count-1 {
+				end = len(batchReq)
+			}
+			err = s.client.BatchTransactions(context.Background(), batchReq[start:end])
+			if err != nil {
+				return nil, RpcError
+			}
+
 		}
 	}
+
 	for _, req := range batchReq {
-		if req.Error != nil || req.Result == nil {
+		if req.Error != nil || req.Result.Transaction == nil {
 			return nil, RpcError
 		}
 		inputTxCache[req.Hash.String()] = req.Result
