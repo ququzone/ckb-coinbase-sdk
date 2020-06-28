@@ -65,6 +65,35 @@ func (s *BlockAPIService) Block(
 		}
 	}
 
+	batchReq := make([]typesCKB.BatchTransactionItem, 0)
+	txHashCache := make(map[string]bool)
+	for i, tx := range block.Transactions {
+		if i != 0 {
+			for _, input := range tx.Inputs {
+				if _, ok := txHashCache[input.PreviousOutput.TxHash.String()]; !ok {
+					txHashCache[input.PreviousOutput.TxHash.String()] = true
+					batchReq = append(batchReq, typesCKB.BatchTransactionItem{
+						Hash:   input.PreviousOutput.TxHash,
+						Result: &typesCKB.TransactionWithStatus{},
+					})
+				}
+			}
+		}
+	}
+	inputTxCache := make(map[string]*typesCKB.TransactionWithStatus)
+	if len(batchReq) > 0 {
+		err = s.client.BatchTransactions(context.Background(), batchReq)
+		if err != nil {
+			return nil, RpcError
+		}
+	}
+	for _, req := range batchReq {
+		if req.Error != nil || req.Result == nil {
+			return nil, RpcError
+		}
+		inputTxCache[req.Hash.String()] = req.Result
+	}
+
 	for i, tx := range block.Transactions {
 		var transaction *types.Transaction
 		optIndex := int64(0)
@@ -101,11 +130,28 @@ func (s *BlockAPIService) Block(
 				},
 				Operations: []*types.Operation{},
 			}
-			index, err := s.processTxInputs(tx.Inputs, optIndex, transaction)
-			if err != nil {
-				return nil, RpcError
+			for _, input := range tx.Inputs {
+				tx := inputTxCache[input.PreviousOutput.TxHash.String()]
+				if tx == nil {
+					return nil, ServerError
+				}
+
+				transaction.Operations = append(transaction.Operations, &types.Operation{
+					OperationIdentifier: &types.OperationIdentifier{
+						Index: optIndex,
+					},
+					Type:   "Transfer",
+					Status: "Success",
+					Account: &types.AccountIdentifier{
+						Address: GenerateAddress(s.network, tx.Transaction.Outputs[input.PreviousOutput.Index].Lock),
+					},
+					Amount: &types.Amount{
+						Value:    fmt.Sprintf("-%d", tx.Transaction.Outputs[input.PreviousOutput.Index].Capacity),
+						Currency: CkbCurrency,
+					},
+				})
+				optIndex++
 			}
-			optIndex = index
 			for _, output := range tx.Outputs {
 				transaction.Operations = append(transaction.Operations, &types.Operation{
 					OperationIdentifier: &types.OperationIdentifier{

@@ -33,6 +33,12 @@ var (
 		Retriable: true,
 	}
 
+	ServerError = &types.Error{
+		Code:      5,
+		Message:   "rpc error",
+		Retriable: true,
+	}
+
 	CkbCurrency = &types.Currency{
 		Symbol:   "CKB",
 		Decimals: 8,
