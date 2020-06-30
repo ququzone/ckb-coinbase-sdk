@@ -9,7 +9,7 @@ require (
 	github.com/elastic/gosigar v0.10.5 // indirect
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/ququzone/ckb-rich-sdk-go v0.1.3
+	github.com/ququzone/ckb-rich-sdk-go v0.1.4
 	github.com/ququzone/ckb-sdk-go v0.2.7
 	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79 // indirect
 	golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3 // indirect

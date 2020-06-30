@@ -63,15 +63,15 @@ func (s *AccountAPIService) AccountBalance(
 		}
 	}
 
-	header, err := s.client.GetTipHeader(context.Background())
+	header, err := s.client.GetTip(context.Background())
 	if err != nil {
 		return nil, RpcError
 	}
 
 	return &types.AccountBalanceResponse{
 		BlockIdentifier: &types.BlockIdentifier{
-			Index: int64(header.Number),
-			Hash:  header.Hash.String(),
+			Index: int64(header.BlockNumber),
+			Hash:  header.BlockHash.String(),
 		},
 		Balances: []*types.Amount{
 			{

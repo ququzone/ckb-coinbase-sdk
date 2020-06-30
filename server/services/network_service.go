@@ -47,17 +47,18 @@ func (s *NetworkAPIService) NetworkStatus(
 	if err != nil {
 		return nil, RpcError
 	}
-	header, err := s.client.GetTipHeader(context.Background())
+	header, err := s.client.GetTip(context.Background())
 	if err != nil {
 		return nil, RpcError
 	}
+	nodeHeader, err := s.client.GetHeaderByNumber(context.Background(), header.BlockNumber)
 
 	result := &types.NetworkStatusResponse{
 		CurrentBlockIdentifier: &types.BlockIdentifier{
-			Index: int64(header.Number),
-			Hash:  header.Hash.String(),
+			Index: int64(nodeHeader.Number),
+			Hash:  nodeHeader.Hash.String(),
 		},
-		CurrentBlockTimestamp: int64(header.Timestamp),
+		CurrentBlockTimestamp: int64(nodeHeader.Timestamp),
 		GenesisBlockIdentifier: &types.BlockIdentifier{
 			Index: 0,
 			Hash:  genesis.Hash.String(),
